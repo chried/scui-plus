@@ -1,0 +1,43 @@
+{
+  "name": "scui-plus",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.1",
+    "@tinymce/tinymce-vue": "^5.1.1",
+    "axios": "^1.6.7",
+    "codemirror": "^6.0.1",
+    "cropperjs": "^1.6.1",
+    "crypto-js": "^4.2.0",
+    "echarts": "^5.5.0",
+    "element-plus": "^2.6.0",
+    "nprogress": "^0.2.0",
+    "pinia": "^2.1.7",
+    "pinyin": "^4.0.0-alpha.0",
+    "qrcodejs2": "^0.0.2",
+    "qrcodejs2-fix": "^0.0.1",
+    "segmentit": "^2.0.3",
+    "sortablejs": "^1.15.2",
+    "tinymce": "^6.8.3",
+    "unplugin-auto-import": "^0.17.5",
+    "unplugin-vue-components": "^0.26.0",
+    "vue": "^3.4.15",
+    "vue-i18n": "^9.9.1",
+    "vue-router": "^4.2.5",
+    "vuedraggable": "^2.24.3",
+    "xgplayer": "^3.0.13",
+    "xgplayer-hls": "^3.0.13"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.20",
+    "@vitejs/plugin-vue": "^5.0.3",
+    "sass": "^1.71.1",
+    "vite": "^5.0.11"
+  }
+}
