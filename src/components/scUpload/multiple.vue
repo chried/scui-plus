@@ -183,7 +183,7 @@
 				})
 			},
 			beforeRemove(uploadFile){
-				return this.$confirm(`是否移除 ${uploadFile.name} ?`, '提示', {
+				return ElMessageBox.confirm(`是否移除 ${uploadFile.name} ?`, '提示', {
 					type: 'warning',
 				}).then(() => {
 					return true

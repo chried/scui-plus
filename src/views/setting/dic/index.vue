@@ -159,7 +159,7 @@
 			},
 			//删除树
 			dicDel(node, data){
-				this.$confirm(`确定删除 ${data.name} 项吗？`, '提示', {
+				ElMessageBox.confirm(`确定删除 ${data.name} 项吗？`, '提示', {
 					type: 'warning'
 				}).then(() => {
 					this.showDicloading = true;
@@ -233,7 +233,7 @@
 			},
 			//批量删除
 			async batch_del(){
-				this.$confirm(`确定删除选中的 ${this.selection.length} 项吗？`, '提示', {
+				ElMessageBox.confirm(`确定删除选中的 ${this.selection.length} 项吗？`, '提示', {
 					type: 'warning'
 				}).then(() => {
 					const loading = this.$loading();

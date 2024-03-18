@@ -118,7 +118,7 @@
 			},
 			//批量删除
 			async batch_del(){
-				this.$confirm(`确定删除选中的 ${this.selection.length} 项吗？如果删除项中含有子集将会被一并删除`, '提示', {
+				ElMessageBox.confirm(`确定删除选中的 ${this.selection.length} 项吗？如果删除项中含有子集将会被一并删除`, '提示', {
 					type: 'warning'
 				}).then(() => {
 					const loading = this.$loading();

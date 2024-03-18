@@ -218,4 +218,16 @@ tool.crypto = {
 	}
 }
 
+// 查找树
+tool.treeFind = (tree, func) => {
+	for (const data of tree) {
+		if (func(data)) return data
+		if (data.children) {
+			const res = tool.treeFind(data.children, func)
+			if (res) return res
+		}
+	}
+	return null
+}
+
 export default tool

@@ -122,7 +122,7 @@
 					return false;
 				}
 
-				var confirm = await this.$confirm('确认删除已选择的菜单吗？','提示', {
+				var confirm = await ElMessageBox.confirm('确认删除已选择的菜单吗？','提示', {
 					type: 'warning',
 					confirmButtonText: '删除',
 					confirmButtonClass: 'el-button--danger'

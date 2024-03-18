@@ -121,7 +121,7 @@
 			},
 			//批量删除
 			async batch_del(){
-				var confirmRes = await this.$confirm(`确定删除选中的 ${this.selection.length} 项吗？`, '提示', {
+				var confirmRes = await ElMessageBox.confirm(`确定删除选中的 ${this.selection.length} 项吗？`, '提示', {
 					type: 'warning',
 					confirmButtonText: '删除',
 					confirmButtonClass: 'el-button--danger'

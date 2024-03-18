@@ -1,7 +1,8 @@
 <template>
 	<div class="adminui-tags">
 		<ul ref="tags">
-			<li v-for="tag in tagList" v-bind:key="tag" :class="[isActive(tag)?'active':'',tag.meta.affix?'affix':'' ]"
+			<li v-for="tag in viewTagsStore.viewTags" v-bind:key="tag"
+				:class="[isActive(tag)?'active':'',tag.meta.affix?'affix':'' ]"
 				@contextmenu.prevent="openContextMenu($event, tag)">
 				<router-link :to="tag">
 					<span>{{ tag.meta.title }}</span>
@@ -51,242 +52,254 @@
 	</transition>
 </template>
 
-<script>
+<script setup>
 import Sortable from 'sortablejs'
 import {useViewTagsStore} from "@/stores/viewTags.js";
 import {useKeepAliveStore} from "@/stores/keepAlive.js";
 import {useIframeStore} from "@/stores/iframe.js";
+import {useRoute, useRouter} from "vue-router";
+import config from "@/config/index.js";
+import tool from "@/utils/tool.js";
+
+const {proxy} = getCurrentInstance()
+
+const route = useRoute()
+const router = useRouter()
 
 const viewTagsStore = useViewTagsStore();
-export default {
-	name: "tags",
-	data() {
-		return {
-			contextMenuVisible: false,
-			contextMenuItem: null,
-			left: 0,
-			top: 0,
-			tagList: viewTagsStore.viewTags,
-			tipDisplayed: false
-		}
-	},
-	props: {},
-	watch: {
-		$route(e) {
-			this.addViewTags(e);
-			//判断标签容器是否出现滚动条
-			this.$nextTick(() => {
-				const tags = this.$refs.tags
-				if (tags && tags.scrollWidth > tags.clientWidth) {
-					//确保当前标签在可视范围内
-					let targetTag = tags.querySelector(".active")
-					targetTag.scrollIntoView()
-					//显示提示
-					if (!this.tipDisplayed) {
-						this.$msgbox({
-							type: 'warning',
-							center: true,
-							title: '提示',
-							message: '当前标签数量过多，可通过鼠标滚轴滚动标签栏。关闭标签数量可减少系统性能消耗。',
-							confirmButtonText: '知道了'
-						})
-						this.tipDisplayed = true
-					}
+const keepAliveStore = useKeepAliveStore();
+const iframeStore = useIframeStore();
 
-				}
-			})
-		},
-		contextMenuVisible(value) {
-			const cm = (e) => {
-				const sp = document.getElementById("contextmenu");
-				if (sp && !sp.contains(e.target)) {
-					this.closeMenu()
-				}
-			}
-			if (value) {
-				document.body.addEventListener('click', e => cm(e))
-			} else {
-				document.body.removeEventListener('click', e => cm(e))
-			}
-		}
-	},
-	created() {
-		var menu = this.$router.sc_getMenu()
-		var dashboardRoute = this.treeFind(menu, node => node.path == this.$CONFIG.DASHBOARD_URL)
-		if (dashboardRoute) {
-			dashboardRoute.fullPath = dashboardRoute.path
-			this.addViewTags(dashboardRoute)
-			this.addViewTags(this.$route)
-		}
-	},
-	mounted() {
-		this.tagDrop();
-		this.scrollInit()
-	},
-	methods: {
-		//查找树
-		treeFind(tree, func) {
-			for (const data of tree) {
-				if (func(data)) return data
-				if (data.children) {
-					const res = this.treeFind(data.children, func)
-					if (res) return res
-				}
-			}
-			return null
-		},
-		//标签拖拽排序
-		tagDrop() {
-			const target = this.$refs.tags
-			Sortable.create(target, {
-				draggable: 'li',
-				animation: 300
-			})
-		},
-		//增加tag
-		addViewTags(route) {
-			if (route.name && !route.meta.fullpage) {
-				const viewTagsStore = useViewTagsStore();
-				const keepAliveStore = useKeepAliveStore();
-				viewTagsStore.pushViewTags(route)
-				keepAliveStore.pushKeepLive(route?.name)
-			}
-		},
-		//高亮tag
-		isActive(route) {
-			return route.fullPath === this.$route.fullPath
-		},
-		//关闭tag
-		closeSelectedTag(tag, autoPushLatestView = true) {
-			const nowTagIndex = this.tagList.findIndex(item => item.fullPath == tag.fullPath)
-			const viewTagsStore = useViewTagsStore();
-			const iframeStore = useIframeStore();
-			const keepAliveStore = useKeepAliveStore();
-			viewTagsStore.removeViewTags(tag)
-			iframeStore.removeIframeList(tag)
-			keepAliveStore.removeKeepLive(tag.name)
-			if (autoPushLatestView && this.isActive(tag)) {
-				const leftView = this.tagList[nowTagIndex - 1]
-				if (leftView) {
-					this.$router.push(leftView)
-				} else {
-					this.$router.push('/')
-				}
-			}
-		},
-		//tag右键
-		openContextMenu(e, tag) {
-			this.contextMenuItem = tag;
-			this.contextMenuVisible = true;
-			this.left = e.clientX + 1;
-			this.top = e.clientY + 1;
+const contextMenuVisible = ref(false)
+const contextMenuItem = ref(null)
+const left = ref(0)
+const top = ref(0)
+const tagList = ref(viewTagsStore.viewTags)
+const tipDisplayed = ref(false)
 
-			//FIX 右键菜单边缘化位置处理
-			this.$nextTick(() => {
-				let sp = document.getElementById("contextmenu");
-				if (document.body.offsetWidth - e.clientX < sp.offsetWidth) {
-					this.left = document.body.offsetWidth - sp.offsetWidth + 1;
-					this.top = e.clientY + 1;
-				}
-			})
-		},
-		//关闭右键菜单
-		closeMenu() {
-			this.contextMenuItem = null;
-			this.contextMenuVisible = false
-		},
-		//TAB 刷新
-		refreshTab() {
-			this.contextMenuVisible = false
-			const nowTag = this.contextMenuItem;
-			//判断是否当前路由，否的话跳转
-			if (this.$route.fullPath !== nowTag.fullPath) {
-				this.$router.push({
-					path: nowTag.fullPath,
-					query: nowTag.query
-				})
-			}
+const tags = ref(null)
 
-			this.$store.commit("refreshIframe", nowTag)
-			setTimeout(() => {
-				this.$store.commit("removeKeepLive", nowTag.name)
-				this.$store.commit("setRouteShow", false)
-				this.$nextTick(() => {
-					this.$store.commit("pushKeepLive", nowTag.name)
-					this.$store.commit("setRouteShow", true)
-				})
-			}, 0);
-		},
-		//TAB 关闭
-		closeTabs() {
-			var nowTag = this.contextMenuItem;
-			if (!nowTag.meta.affix) {
-				this.closeSelectedTag(nowTag)
-				this.contextMenuVisible = false
-			}
-		},
-		//TAB 关闭其他
-		closeOtherTabs() {
-			var nowTag = this.contextMenuItem;
-			//判断是否当前路由，否的话跳转
-			if (this.$route.fullPath != nowTag.fullPath) {
-				this.$router.push({
-					path: nowTag.fullPath,
-					query: nowTag.query
-				})
-			}
-			var tags = [...this.tagList];
-			tags.forEach(tag => {
-				if (tag.meta && tag.meta.affix || nowTag.fullPath == tag.fullPath) {
-					return true
-				} else {
-					this.closeSelectedTag(tag, false)
-				}
-			})
-			this.contextMenuVisible = false
-		},
-		//TAB 最大化
-		maximize() {
-			var nowTag = this.contextMenuItem;
-			this.contextMenuVisible = false
-			//判断是否当前路由，否的话跳转
-			if (this.$route.fullPath != nowTag.fullPath) {
-				this.$router.push({
-					path: nowTag.fullPath,
-					query: nowTag.query
-				})
-			}
-			document.getElementById('app').classList.add('main-maximize')
-		},
-		//新窗口打开
-		openWindow() {
-			var nowTag = this.contextMenuItem;
-			var url = nowTag.href || '/';
-			if (!nowTag.meta.affix) {
-				this.closeSelectedTag(nowTag)
-			}
-			window.open(url);
-			this.contextMenuVisible = false
-		},
-		//横向滚动
-		scrollInit() {
-			const scrollDiv = this.$refs.tags;
-			scrollDiv.addEventListener('mousewheel', handler, false) || scrollDiv.addEventListener("DOMMouseScroll", handler, false)
+// 限制路由比生命函数先执行
+const routeFlag = ref(false)
 
-			function handler(event) {
-				const detail = event.wheelDelta || event.detail;
-				//火狐上滚键值-3 下滚键值3，其他内核上滚键值120 下滚键值-120
-				const moveForwardStep = 1;
-				const moveBackStep = -1;
-				let step = 0;
-				if (detail == 3 || detail < 0 && detail != -3) {
-					step = moveForwardStep * 50;
-				} else {
-					step = moveBackStep * 50;
-				}
-				scrollDiv.scrollLeft += step;
-			}
+// 增加tag
+const addViewTags = (route_) => {
+	if (route_.name && !route_.meta.fullpage) {
+		const viewTagsStore = useViewTagsStore();
+		const keepAliveStore = useKeepAliveStore();
+		viewTagsStore.pushViewTags(route_)
+		keepAliveStore.pushKeepLive(route_?.name)
+	}
+}
+
+onMounted(() => {
+
+	const menu = router.sc_getMenu()
+	let dashboardRoute = tool.treeFind(menu, node => node.path == config.DASHBOARD_URL)
+	if (dashboardRoute) {
+		dashboardRoute.fullPath = dashboardRoute.path
+		addViewTags(dashboardRoute)
+		addViewTags(proxy.$route)
+
+		routeFlag.value = true
+	}
+
+	tagDrop();
+	scrollInit()
+})
+
+watch(
+	() => proxy.$route,
+	(val) => {
+		if (!routeFlag.value) {
+			return;
 		}
+		addViewTags(val);
+		//判断标签容器是否出现滚动条
+		nextTick(() => {
+			if (tags.value && tags.value.scrollWidth > tags.value.clientWidth) {
+				//确保当前标签在可视范围内
+				let targetTag = tags.querySelector(".active")
+				targetTag.scrollIntoView()
+				//显示提示
+				if (!tipDisplayed.value) {
+					this.$msgbox({
+						type: 'warning',
+						center: true,
+						title: '提示',
+						message: '当前标签数量过多，可通过鼠标滚轴滚动标签栏。关闭标签数量可减少系统性能消耗。',
+						confirmButtonText: '知道了'
+					})
+					tipDisplayed.value = true
+				}
+			}
+		})
+	}, {immediate: true, deep: true}
+)
+
+watch(contextMenuVisible, (val) => {
+	const cm = (e) => {
+		const sp = document.getElementById("contextmenu");
+		if (sp && !sp.contains(e.target)) {
+			closeMenu()
+		}
+	}
+	if (val) {
+		document.body.addEventListener('click', e => cm(e))
+	} else {
+		document.body.removeEventListener('click', e => cm(e))
+	}
+})
+
+// 标签拖拽排序
+const tagDrop = () => {
+	const target = tags.value
+	Sortable.create(target, {
+		draggable: 'li',
+		animation: 300
+	})
+}
+//高亮tag
+const isActive = (route_) => {
+	return route_.fullPath === route.fullPath
+}
+
+//关闭tag
+const closeSelectedTag = (tag, autoPushLatestView = true) => {
+	const nowTagIndex = tagList.value.findIndex(item => item.fullPath == tag.fullPath)
+	const viewTagsStore = useViewTagsStore();
+	const iframeStore = useIframeStore();
+	const keepAliveStore = useKeepAliveStore();
+	viewTagsStore.removeViewTags(tag)
+	iframeStore.removeIframeList(tag)
+	keepAliveStore.removeKeepLive(tag.name)
+	if (autoPushLatestView && isActive(tag)) {
+		const leftView = tagList.value[nowTagIndex - 1]
+		if (leftView) {
+			router.push(leftView)
+		} else {
+			router.push('/')
+		}
+	}
+}
+
+//tag右键
+const openContextMenu = (e, tag) => {
+	contextMenuItem.value = tag;
+	contextMenuVisible.value = true;
+	left.value = e.clientX + 1;
+	top.value = e.clientY + 1;
+
+	//FIX 右键菜单边缘化位置处理
+	nextTick(() => {
+		let sp = document.getElementById("contextmenu");
+		if (document.body.offsetWidth - e.clientX < sp.offsetWidth) {
+			left.value = document.body.offsetWidth - sp.offsetWidth + 1;
+			top.value = e.clientY + 1;
+		}
+	})
+}
+
+// 关闭右键菜单
+const closeMenu = () => {
+	contextMenuItem.value = null;
+	contextMenuVisible.value = false
+}
+
+//TAB 刷新
+const refreshTab = () => {
+	contextMenuVisible.value = false
+	const nowTag = contextMenuItem.value;
+	//判断是否当前路由，否的话跳转
+	if (route.fullPath !== nowTag.fullPath) {
+		router.push({
+			path: nowTag.fullPath,
+			query: nowTag.query
+		})
+	}
+	iframeStore.refreshIframe(nowTag)
+	setTimeout(() => {
+		keepAliveStore.removeKeepLive(nowTag.name)
+		keepAliveStore.setRouteShow(false)
+		nextTick(() => {
+			keepAliveStore.pushKeepLive(nowTag.name)
+			keepAliveStore.setRouteShow(true)
+		})
+	}, 0);
+}
+
+// TAB 关闭
+const closeTabs = () => {
+	let nowTag = contextMenuItem.value;
+	if (!nowTag.meta.affix) {
+		closeSelectedTag(nowTag)
+		contextMenuVisible.value = false
+	}
+}
+
+// TAB 关闭其他
+const closeOtherTabs = () => {
+	let nowTag = contextMenuItem.value;
+	//判断是否当前路由，否的话跳转
+	if (route.fullPath != nowTag.fullPath) {
+		router.push({
+			path: nowTag.fullPath,
+			query: nowTag.query
+		})
+	}
+	let tags = [...tagList.value];
+	tags.forEach(tag => {
+		if (tag.meta && tag.meta.affix || nowTag.fullPath == tag.fullPath) {
+			return true
+		} else {
+			closeSelectedTag(tag, false)
+		}
+	})
+	contextMenuVisible.value = false
+}
+
+//TAB 最大化
+const maximize = () => {
+	let nowTag = contextMenuItem.value;
+	contextMenuVisible.value = false
+	//判断是否当前路由，否的话跳转
+	if (route.fullPath != nowTag.fullPath) {
+		router.push({
+			path: nowTag.fullPath,
+			query: nowTag.query
+		})
+	}
+	document.getElementById('app').classList.add('main-maximize')
+}
+
+//新窗口打开
+const openWindow = () => {
+	let nowTag = contextMenuItem.value;
+	let url = nowTag.href || '/';
+	if (!nowTag.meta.affix) {
+		closeSelectedTag(nowTag)
+	}
+	window.open(url);
+	contextMenuVisible.value = false
+}
+
+//横向滚动
+const scrollInit = () => {
+	const scrollDiv = tags.value;
+	scrollDiv.addEventListener('mousewheel', handler, false) || scrollDiv.addEventListener("DOMMouseScroll", handler, false)
+
+	function handler(event) {
+		const detail = event.wheelDelta || event.detail;
+		//火狐上滚键值-3 下滚键值3，其他内核上滚键值120 下滚键值-120
+		const moveForwardStep = 1;
+		const moveBackStep = -1;
+		let step = 0;
+		if (detail == 3 || detail < 0 && detail != -3) {
+			step = moveForwardStep * 50;
+		} else {
+			step = moveBackStep * 50;
+		}
+		scrollDiv.scrollLeft += step;
 	}
 }
 </script>

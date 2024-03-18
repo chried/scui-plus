@@ -127,7 +127,7 @@
 				})
 			},
 			del(task){
-				this.$confirm(`确认删除 ${task.title} 计划任务吗？`,'提示', {
+				ElMessageBox.confirm(`确认删除 ${task.title} 计划任务吗？`,'提示', {
 					type: 'warning',
 					confirmButtonText: '删除',
 					confirmButtonClass: 'el-button--danger'
